@@ -24,7 +24,7 @@ rec {
       nixosConfigurations = {
         "${systemSettings.hostname}" = inputs.nixpkgs.lib.nixosSystem {
           specialArgs = {
-            inherit systemSettings;
+            inherit systemSettings self;
           };
           modules = systemSettings.modules;
         };
