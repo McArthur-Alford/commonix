@@ -98,6 +98,7 @@ rec {
       system ? "x86_64-linux",
       kernel ? "latest",
       users ? [ ], # list of user names
+      trustedUsers ? [ ], # trusted users
     }:
     assert builtins.isString hostname;
     assert builtins.isList users;
@@ -122,6 +123,7 @@ rec {
           kernel
           users
           stateVersion
+          trustedUsers
           ;
 
         modules =
