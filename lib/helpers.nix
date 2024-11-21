@@ -1,7 +1,7 @@
 { self, inputs, ... }:
 rec {
   mkHosts =
-    { configurations }:
+    configurations:
     if configurations == [ ] then
       {
         homeConfigurations = { };
@@ -11,7 +11,7 @@ rec {
       let
         head = builtins.head configurations;
         tail = builtins.tail configurations;
-        combined = mkHosts { inherit tail; };
+        combined = mkHosts tail;
       in
       {
         homeConfigurations = head.homeConfigurations // combined.homeConfigurations;
@@ -43,14 +43,18 @@ rec {
       systemSettings,
       userConfigurations ? { },
     }:
+    let
+      head = builtins.head userSettings;
+    in
     if userSettings == [ ] then
       { }
     else
       (
         {
-          "${userSettings.username}@${systemSettings.hostname}" = (
+          "${head.user}@${systemSettings.hostname}" = (
             mkHome {
-              userSettings = builtins.head userSettings;
+              userSettings = head;
+              inherit systemSettings;
             }
           );
         }
@@ -63,14 +67,17 @@ rec {
   mkHome =
     { userSettings, systemSettings }:
     inputs.home-manager.lib.homeManagerConfiguration {
-      pkgs = inputs.nixpkgs.${systemSettings.system};
+      pkgs = import inputs.nixpkgs {
+        config.allowUnfree = true;
+        system = systemSettings.system;
+      };
       extraSpecialArgs = {
         inherit userSettings inputs;
       };
       modules = userSettings.modules;
     };
 
-  notNull = x: f: if x == null then [ ] else [ ];
+  notNull = x: f: if x == null then [ ] else (f x);
   optionalFile = path: if builtins.pathExists "${self}/${path}" then [ "${self}/${path}" ] else [ ];
   requireFile =
     path:
@@ -79,6 +86,10 @@ rec {
     in
     assert builtins.pathExists "${self}/${path}";
     file;
+
+  loadAllSystems = builtins.concatMap (file: [
+    (loadSystemSettings (import "${self}/settings/hosts/${file}"))
+  ]) (builtins.attrNames (builtins.readDir "${self}/settings/hosts"));
 
   loadSystemSettings =
     {
@@ -89,42 +100,62 @@ rec {
     }:
     assert builtins.isString hostname;
     assert builtins.isList users;
-    rec {
-      inherit
-        hostname
-        system
-        kernel
-        users
-        ;
-      modules =
-        # Universal config
-        (optionalFile "hosts/default.nix")
+    assert builtins.all (
+      user:
+      !(
+        builtins.pathExists "${self}/hosts/${hostname}/users/${user}.nix"
+        && builtins.pathExists "${self}/hosts/${hostname}/users/${user}"
+      )
+    ) users;
+    let
+      userSettings = builtins.map (
+        user: loadUserSettings (import ("${self}/settings/users/${user}.nix"))
+      ) users;
+    in
+    {
+      inherit userSettings;
+      systemSettings = rec {
+        inherit
+          hostname
+          system
+          kernel
+          users
+          ;
 
-        # Host specific config
-        ++ (optionalFile "hosts/${hostname}/configuration.nix")
-        ++ (optionalFile "hosts/${hostname}/hardware-configuration.nix")
+        modules =
+          # Universal config
+          (optionalFile "hosts/default.nix")
 
-        # Config specific to THIS host for each supported user:
-        ++ (builtins.concatMap (user: optionalFile "hosts/${hostname}/users/${user}.nix") users)
-        ++ (builtins.concatMap (user: optionalFile "hosts/${hostname}/users/${user}/default.nix") users)
+          # Host specific config
+          ++ (optionalFile "hosts/${hostname}/default.nix")
 
-        # Config for ALL hosts for each supported user:
-        ++ (builtins.concatMap (user: optionalFile "users/${user}/system/default.nix") users)
+          # Config for ALL hosts for each supported user:
+          ++ (builtins.concatMap (user: optionalFile "users/${user}/system/default.nix") users)
 
-        # Universal modules that are always loaded
-        ++ (optionalFile "modules/default.nix")
+          # Universal modules that are always loaded
+          ++ (optionalFile "modules/default.nix")
 
-        # The desktop
-        ++ builtins.concatMap (
-          user:
-          let
-            userSettings = loadUserSettings (import requireFile "settings/users/${user}.nix");
-          in
-          [ ]
-        ) users
+          # User specific configuration
+          ++ (builtins.concatMap (
+            userSettings:
+            let
+              user = userSettings.user;
+            in
+            # User config:
+            optionalFile "hosts/${hostname}/users/${user}.nix"
+            ++ optionalFile "hosts/${hostname}/users/${user}/default.nix"
 
-        # The kernel
-        ++ (requireFile "modules/kernel/${kernel}.nix");
+            # User system config (ideally not necessary):
+            ++ optionalFile "users/${user}/system/default.nix"
+
+            # User specified desktop environment:
+            ++ (notNull userSettings.gui.desktop (desktop: requireFile "modules/desktop/${desktop}.nix"))
+            ++ (notNull userSettings.gui.protocol (protocol: requireFile "modules/protocol/${protocol}.nix"))
+          ) userSettings)
+
+          # The kernel
+          ++ (requireFile "modules/kernel/${kernel}.nix");
+      };
     };
 
   loadUserSettings =
@@ -134,8 +165,11 @@ rec {
         protocol = null; # wayland or x11
         desktop = null; # hyprland, sway, gnome, niri, etc
       },
+      ...
     }:
     assert builtins.isString user;
+    assert
+      !(builtins.pathExists "${self}/users/${user}.nix" && builtins.pathExists "${self}/users/${user}");
     {
       inherit user gui;
       modules =

@@ -1,6 +1,10 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -16,17 +20,13 @@
           lib = import ./lib {
             inherit inputs self;
           };
+          configs = lib.mkHosts (builtins.map (x: lib.mkHost x) lib.loadAllSystems);
         in
         {
-          lib = lib;
-          nixosConfigurations = {
-            thaumaturge = lib.mkHost {
-              hostname = "thaumaturge";
-              username = "mcarthur";
-              system = "x86_64-linux";
-              desktop = "alucard-niri";
-            };
-          };
+          helpers = lib;
+
+          homeConfigurations = configs.homeConfigurations;
+          nixosConfigurations = configs.nixosConfigurations;
         };
     };
 }

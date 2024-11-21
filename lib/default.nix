@@ -15,5 +15,6 @@ in
     getDir
     loadSystemSettings
     loadUserSettings
+    loadAllSystems
     ;
 }
