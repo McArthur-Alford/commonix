@@ -115,6 +115,13 @@ rec {
         ++ (optionalFile "modules/default.nix")
 
         # The desktop
+        ++ builtins.concatMap (
+          user:
+          let
+            userSettings = loadUserSettings (import requireFile "settings/users/${user}.nix");
+          in
+          [ ]
+        ) users
 
         # The kernel
         ++ (requireFile "modules/kernel/${kernel}.nix");
