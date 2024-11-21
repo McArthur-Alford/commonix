@@ -94,6 +94,7 @@ rec {
   loadSystemSettings =
     {
       hostname, # system hostname
+      stateVersion, # system state version
       system ? "x86_64-linux",
       kernel ? "latest",
       users ? [ ], # list of user names
@@ -120,6 +121,7 @@ rec {
           system
           kernel
           users
+          stateVersion
           ;
 
         modules =
