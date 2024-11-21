@@ -54,7 +54,7 @@ rec {
           "${head.user}@${systemSettings.hostname}" = (
             mkHome {
               userSettings = head;
-              inherit systemSettings;
+              inherit systemSettings self inputs;
             }
           );
         }
