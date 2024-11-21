@@ -1,15 +1,32 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 
   outputs =
-    { }@inputs:
+    { nixpkgs, ... }@inputs:
     {
-      generateUsers = { };
-      magic = x: y: [
-        x
-        y
-      ];
+      generateOutputs =
+        {
+          self,
+          ...
+        }:
+        let
+          inherit (self) outputs;
+          lib = import ./lib {
+            inherit inputs self;
+          };
+        in
+        {
+          lib = lib;
+          nixosConfigurations = {
+            thaumaturge = lib.mkHost {
+              hostname = "thaumaturge";
+              username = "mcarthur";
+              system = "x86_64-linux";
+              desktop = "alucard-niri";
+            };
+          };
+        };
     };
 }
