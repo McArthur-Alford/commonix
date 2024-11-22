@@ -81,7 +81,7 @@ rec {
       };
       modules =
         userSettings.modules
-        ++ (optionalFile "users/${userSettings.user}/${systemSettings.hostname}/default.nix");
+        ++ (optionalFile "users/${userSettings.user}/${systemSettings.hostname}/default.home.nix");
     };
 
   notNull = x: f: if x == null then [ ] else (f x);
