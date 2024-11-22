@@ -177,6 +177,7 @@ rec {
         protocol = null; # wayland or x11
         desktop = null; # hyprland, sway, gnome, niri, etc
       },
+      theme,
       ...
     }:
     assert builtins.isString user;
@@ -185,7 +186,7 @@ rec {
         builtins.pathExists "${self}/users/${user}.home.nix" && builtins.pathExists "${self}/users/${user}"
       );
     {
-      inherit user gui;
+      inherit user gui theme;
       modules =
         # The users universal config, either a directory or .home.nix file:
         (optionalFile "users/${user}/default.home.nix")
@@ -194,7 +195,9 @@ rec {
 
         # The users host-specific config, if it exists:
         ++ (notNull gui.desktop (desktop: requireFile "modules/desktop/${desktop}.home.nix"))
-        ++ (notNull gui.protocol (protocol: requireFile "modules/protocol/${protocol}.home.nix"));
+        ++ (notNull gui.protocol (protocol: requireFile "modules/protocol/${protocol}.home.nix"))
+
+        ++ (notNull theme (theme: requireFile "modules/programs/stylix.home.nix"));
     };
 
   forAllSystems = inputs.nixpkgs.lib.genAttrs [
