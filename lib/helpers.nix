@@ -54,7 +54,7 @@ rec {
           "${head.user}@${systemSettings.hostname}" = (
             mkHome {
               userSettings = head;
-              inherit systemSettings self inputs;
+              inherit systemSettings;
             }
           );
         }
@@ -72,9 +72,16 @@ rec {
         system = systemSettings.system;
       };
       extraSpecialArgs = {
-        inherit userSettings inputs;
+        inherit
+          userSettings
+          systemSettings
+          self
+          inputs
+          ;
       };
-      modules = userSettings.modules;
+      modules =
+        userSettings.modules
+        ++ (optionalFile "users/${userSettings.user}/${systemSettings.hostname}/default.nix");
     };
 
   notNull = x: f: if x == null then [ ] else (f x);
@@ -155,6 +162,7 @@ rec {
             # User specified desktop environment:
             ++ (notNull userSettings.gui.desktop (desktop: requireFile "modules/desktop/${desktop}.nix"))
             ++ (notNull userSettings.gui.protocol (protocol: requireFile "modules/protocol/${protocol}.nix"))
+            ++ (notNull userSettings.gui.desktop (desktop: requireFile "modules/desktop/default.nix"))
           ) userSettings)
 
           # The kernel
@@ -173,13 +181,16 @@ rec {
     }:
     assert builtins.isString user;
     assert
-      !(builtins.pathExists "${self}/users/${user}.nix" && builtins.pathExists "${self}/users/${user}");
+      !(
+        builtins.pathExists "${self}/users/${user}.home.nix" && builtins.pathExists "${self}/users/${user}"
+      );
     {
       inherit user gui;
       modules =
         # The users universal config, either a directory or .home.nix file:
         (optionalFile "users/${user}/default.home.nix")
         ++ (optionalFile "users/${user}.home.nix")
+        ++ (optionalFile "users/default.home.nix")
 
         # The users host-specific config, if it exists:
         ++ (notNull gui.desktop (desktop: requireFile "modules/desktop/${desktop}.home.nix"))
