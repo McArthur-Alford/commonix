@@ -20,7 +20,7 @@ rec {
 
   mkHost =
     { userSettings, systemSettings }:
-    {
+    let
       nixosConfigurations = {
         "${systemSettings.hostname}" = inputs.nixpkgs.lib.nixosSystem {
           specialArgs = {
@@ -29,10 +29,14 @@ rec {
           modules = systemSettings.modules;
         };
       };
+    in
+    {
+      inherit nixosConfigurations;
 
       homeConfigurations = (
         mkHomes {
           inherit userSettings systemSettings;
+          nixosConfigurations = nixosConfigurations."${systemSettings.hostname}";
         }
       );
     };
@@ -41,6 +45,7 @@ rec {
     {
       userSettings,
       systemSettings,
+      nixosConfigurations,
       userConfigurations ? { },
     }:
     let
@@ -54,18 +59,22 @@ rec {
           "${head.user}@${systemSettings.hostname}" = (
             mkHome {
               userSettings = head;
-              inherit systemSettings;
+              inherit systemSettings nixosConfigurations;
             }
           );
         }
         // (mkHomes {
           userSettings = builtins.tail userSettings;
-          inherit systemSettings userConfigurations;
+          inherit systemSettings userConfigurations nixosConfigurations;
         })
       );
 
   mkHome =
-    { userSettings, systemSettings }:
+    {
+      userSettings,
+      systemSettings,
+      nixosConfigurations,
+    }:
     inputs.home-manager.lib.homeManagerConfiguration {
       pkgs = import inputs.nixpkgs {
         config.allowUnfree = true;
@@ -78,6 +87,7 @@ rec {
           self
           inputs
           ;
+        osConfig = nixosConfigurations.config;
       };
       modules =
         userSettings.modules
@@ -106,6 +116,9 @@ rec {
       kernel ? "latest",
       users ? [ ], # list of user names
       trustedUsers ? [ ], # trusted users
+      nixPath ? "/etc/nixos",
+      misc,
+      ...
     }:
     assert builtins.isString hostname;
     assert builtins.isList users;
@@ -131,6 +144,8 @@ rec {
           users
           stateVersion
           trustedUsers
+          nixPath
+          misc
           ;
 
         modules =
