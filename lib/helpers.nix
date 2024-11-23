@@ -101,7 +101,9 @@ rec {
     let
       file = (optionalFile path);
     in
-    assert builtins.pathExists "${self}/${path}" || builtins.throw "The file '${path}' does not exist at '${self}'";
+    assert
+      builtins.pathExists "${self}/${path}"
+      || builtins.throw "The file '${path}' does not exist at '${self}'";
     file;
 
   loadAllSystems = builtins.concatMap (file: [
@@ -122,14 +124,16 @@ rec {
     }:
     assert builtins.isString hostname || builtins.throw "Hostname is not a string: ${hostname}";
     assert builtins.isList users || builtins.throw "Users is not a list: ${users}";
-    assert builtins.all (
-      user:
-      !(
-        builtins.pathExists "${self}/hosts/${hostname}/users/${user}.nix"
-        && builtins.pathExists "${self}/hosts/${hostname}/users/${user}"
-      )
-      # TODO: I dont really no what this one is lol
-    ) users || builtins.throw "Cannot find user configs?";
+    assert
+      builtins.all (
+        user:
+        !(
+          builtins.pathExists "${self}/hosts/${hostname}/users/${user}.nix"
+          && builtins.pathExists "${self}/hosts/${hostname}/users/${user}"
+        )
+        # TODO: I dont really no what this one is lol
+      ) users
+      || builtins.throw "Cannot find user configs?";
     let
       userSettings = builtins.map (
         user: loadUserSettings (import ("${self}/settings/users/${user}.nix") // { inherit hostname; })
@@ -176,9 +180,15 @@ rec {
             ++ optionalFile "users/${user}/system/default.nix"
 
             # User specified desktop environment:
-            ++ (notNull userSettings.gui.desktop (desktop: requireFile "modules/desktop/${desktop}.nix"))
-            ++ (notNull userSettings.gui.protocol (protocol: requireFile "modules/protocol/${protocol}.nix"))
-            ++ (notNull userSettings.gui.desktop (desktop: requireFile "modules/desktop/default.nix"))
+            ++ (notNull userSettings.gui.${userSettings.hostname}.desktop (
+              desktop: requireFile "modules/desktop/${desktop}.nix"
+            ))
+            ++ (notNull userSettings.gui.${userSettings.hostname}.protocol (
+              protocol: requireFile "modules/protocol/${protocol}.nix"
+            ))
+            ++ (notNull userSettings.gui.${userSettings.hostname}.desktop (
+              desktop: requireFile "modules/desktop/default.nix"
+            ))
           ) userSettings)
 
           # The kernel
@@ -203,12 +213,18 @@ rec {
     assert
       !(
         builtins.pathExists "${self}/users/${user}.home.nix" && builtins.pathExists "${self}/users/${user}"
-    ) || builtins.throw "User configs for ${user} not found";
+      )
+      || builtins.throw "User configs for ${user} not found";
     let
-      hostname = if gui ? ${hostname} then hostname else "default";
+      hostnameOrDefault = if gui ? ${hostname} then hostname else "default";
     in
     {
-      inherit user gui theme;
+      inherit
+        user
+        gui
+        theme
+        ;
+      hostname = hostnameOrDefault;
       modules =
         # The users universal config, either a directory or .home.nix file:
         (optionalFile "users/${user}/default.home.nix")
@@ -216,8 +232,12 @@ rec {
         ++ (optionalFile "users/default.home.nix")
 
         # The users host-specific config, if it exists:
-        ++ (notNull gui.${hostname}.desktop (desktop: requireFile "modules/desktop/${desktop}.home.nix"))
-        ++ (notNull gui.${hostname}.protocol (protocol: requireFile "modules/protocol/${protocol}.home.nix"))
+        ++ (notNull gui.${hostnameOrDefault}.desktop (
+          desktop: requireFile "modules/desktop/${desktop}.home.nix"
+        ))
+        ++ (notNull gui.${hostnameOrDefault}.protocol (
+          protocol: requireFile "modules/protocol/${protocol}.home.nix"
+        ))
 
         ++ (notNull theme (theme: requireFile "modules/programs/stylix.home.nix"));
     };
