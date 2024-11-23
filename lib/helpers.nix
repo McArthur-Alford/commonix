@@ -131,7 +131,7 @@ rec {
     ) users;
     let
       userSettings = builtins.map (
-        user: loadUserSettings (import ("${self}/settings/users/${user}.nix"))
+        user: loadUserSettings (import ("${self}/settings/users/${user}.nix") { inherit hostname; })
       ) users;
     in
     {
@@ -189,17 +189,23 @@ rec {
     {
       user,
       gui ? {
-        protocol = null; # wayland or x11
-        desktop = null; # hyprland, sway, gnome, niri, etc
+        default = {
+          desktop = null; # hyprland, sway, gnome, niri, etc
+          protocol = null; # wayland or x11
+        };
       },
       theme,
+      hostname,
       ...
     }:
     assert builtins.isString user;
     assert
       !(
         builtins.pathExists "${self}/users/${user}.home.nix" && builtins.pathExists "${self}/users/${user}"
-      );
+    );
+    let
+      hostname = if gui ? ${hostname} then hostname else "default";
+    in
     {
       inherit user gui theme;
       modules =
@@ -209,8 +215,8 @@ rec {
         ++ (optionalFile "users/default.home.nix")
 
         # The users host-specific config, if it exists:
-        ++ (notNull gui.desktop (desktop: requireFile "modules/desktop/${desktop}.home.nix"))
-        ++ (notNull gui.protocol (protocol: requireFile "modules/protocol/${protocol}.home.nix"))
+        ++ (notNull gui.${hostname}.desktop (desktop: requireFile "modules/desktop/${desktop}.home.nix"))
+        ++ (notNull gui.${hostname}.protocol (protocol: requireFile "modules/protocol/${protocol}.home.nix"))
 
         ++ (notNull theme (theme: requireFile "modules/programs/stylix.home.nix"));
     };
