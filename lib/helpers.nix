@@ -101,7 +101,7 @@ rec {
     let
       file = (optionalFile path);
     in
-    assert builtins.pathExists "${self}/${path}";
+    assert builtins.pathExists "${self}/${path}" || builtins.throw "The file '${path}' does not exist at '${self}'";
     file;
 
   loadAllSystems = builtins.concatMap (file: [
@@ -120,18 +120,19 @@ rec {
       misc,
       ...
     }:
-    assert builtins.isString hostname;
-    assert builtins.isList users;
+    assert builtins.isString hostname || builtins.throw "Hostname is not a string: ${hostname}";
+    assert builtins.isList users || builtins.throw "Users is not a list: ${users}";
     assert builtins.all (
       user:
       !(
         builtins.pathExists "${self}/hosts/${hostname}/users/${user}.nix"
         && builtins.pathExists "${self}/hosts/${hostname}/users/${user}"
       )
-    ) users;
+      # TODO: I dont really no what this one is lol
+    ) users || builtins.throw "Cannot find user configs?";
     let
       userSettings = builtins.map (
-        user: loadUserSettings (import ("${self}/settings/users/${user}.nix") { inherit hostname; })
+        user: loadUserSettings (import ("${self}/settings/users/${user}.nix") // { inherit hostname; })
       ) users;
     in
     {
@@ -198,11 +199,11 @@ rec {
       hostname,
       ...
     }:
-    assert builtins.isString user;
+    assert builtins.isString user || builtins.throw "User: ${user} is not a string";
     assert
       !(
         builtins.pathExists "${self}/users/${user}.home.nix" && builtins.pathExists "${self}/users/${user}"
-    );
+    ) || builtins.throw "User configs for ${user} not found";
     let
       hostname = if gui ? ${hostname} then hostname else "default";
     in
