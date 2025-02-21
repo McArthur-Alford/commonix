@@ -216,7 +216,7 @@ rec {
       )
       || builtins.throw "User configs for ${user} not found";
     let
-      hostnameOrDefault = if gui ? ${hostname} then hostname else "default";
+      hostnameOrDefault = if gui ? hostname then hostname else "default";
     in
     {
       inherit
