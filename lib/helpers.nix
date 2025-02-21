@@ -233,10 +233,14 @@ rec {
 
         # The users host-specific config, if it exists:
         ++ (notNull gui.${hostnameOrDefault}.desktop (
-          desktop: requireFile "modules/desktop/${desktop}.home.nix"
+          desktop: 
+          builtins.trace "Using desktop: ${desktop}"
+          requireFile "modules/desktop/${desktop}.home.nix"
         ))
         ++ (notNull gui.${hostnameOrDefault}.protocol (
-          protocol: requireFile "modules/protocol/${protocol}.home.nix"
+          protocol:
+          builtins.trace "Using protocol: ${protocol}"
+          requireFile "modules/protocol/${protocol}.home.nix"
         ))
 
         ++ (notNull theme (theme: requireFile "modules/programs/stylix.home.nix"));
