@@ -247,7 +247,8 @@ rec {
         # If they have a desktop, include modules/desktop/default.home.nix
         # Using this for things like firefox etc as it makes more sense to be here
         ++ (notNull gui.${hostnameOrDefault}.desktop (
-          _: optionalFile "modules/desktop/desktop.home.nix"
+          _:
+            optionalFile "modules/desktop/default.home.nix"
         ))
 
         # If they have a theme set, require stylix
