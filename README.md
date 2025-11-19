@@ -5,5 +5,5 @@ _Attempts_ to simplify dotfiles and improve modularity
 _Code is self documentating_
 
 # Example Nix Configs
-[McArthur-Alford CommoNix maintainer](https://github.com/McArthur-Alford/dotfiles)
+[McArthur-Alford CommoNix maintainer](https://github.com/McArthur-Alford/dotfiles)  
 [JTrenerry CommoNix maintainer](https://github.com/JTrenerry/dotfiles)
